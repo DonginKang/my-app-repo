@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const version = "v1.1";
+const version = "v1.2";
 
 app.get('/', (req, res) => {
   res.send(`Hello from GitHub Actions! Version: ${version}`);
