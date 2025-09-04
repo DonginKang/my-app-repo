@@ -1,18 +1,29 @@
-# ci-pipeline.yaml 파일
+# 워크플로우의 전체 이름
+name: CI-CD Pipeline for My App
 
-# ... (name: 과 on: 부분은 그대로 둡니다)
+# 워크플로우를 실행시키는 조건(트리거)
+on:
+  # 'main' 브랜치에 'push' 이벤트가 발생했을 때 실행
+  push:
+    branches: [ main ]
 
+# 실제 수행될 작업들의 묶음
 jobs:
   build-and-deploy:
+    # 작업이 실행될 가상 서버 환경
     runs-on: ubuntu-latest
+    # 이 작업에 필요한 권한 설정
     permissions:
-      contents: write
-      packages: write
+      contents: write # config-repo에 커밋하기 위한 권한
+      packages: write # GHCR에 이미지를 푸시하기 위한 권한
 
+    # 작업의 단계별 실행 순서
     steps:
+    # 1단계: 애플리케이션 소스 코드 체크아웃
     - name: 1. Checkout App Repository
       uses: actions/checkout@v4
 
+    # 2단계: GitHub Container Registry(GHCR)에 로그인
     - name: 2. Login to GitHub Container Registry (GHCR)
       uses: docker/login-action@v3
       with:
@@ -22,7 +33,7 @@ jobs:
 
     # 3단계: 이미지 이름 및 태그 생성 (소문자 변환)
     - name: 3. Generate Image Info
-      id: image-info
+      id: image-info # 이 단계의 출력을 참조하기 위한 ID
       run: |
         # github.repository 값을 모두 소문자로 변환합니다.
         IMAGE_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
@@ -41,7 +52,7 @@ jobs:
     - name: 5. Checkout Config Repository
       uses: actions/checkout@v4
       with:
-        repository: <내 GitHub ID>/my-config-repo # 👈 이 부분은 자신의 config-repo 주소로 유지
+        repository: <내 GitHub ID>/my-config-repo # 👈 이 부분은 자신의 config-repo 주소로 변경
         token: ${{ secrets.PAT }}
 
     # 6단계: 쿠버네티스 매니페스트의 이미지 태그 업데이트
