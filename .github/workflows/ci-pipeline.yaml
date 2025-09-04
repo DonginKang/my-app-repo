@@ -1,61 +1,57 @@
-# 워크플로우의 이름
-name: CI-CD Pipeline for My App
+# ci-pipeline.yaml 파일
 
-# 언제 이 워크플로우를 실행할지 결정하는 트리거
-on:
-  push:
-    branches: [ main ] # main 브랜치에 코드가 푸시될 때 실행
+# ... (name: 과 on: 부분은 그대로 둡니다)
 
-# 실제 수행될 작업들의 묶음
 jobs:
   build-and-deploy:
-    # 작업이 실행될 가상 서버 환경
     runs-on: ubuntu-latest
-    # 이 작업에 필요한 권한 설정
     permissions:
-      contents: write # config-repo에 커밋하기 위한 권한
-      packages: write # GHCR에 이미지를 푸시하기 위한 권한
+      contents: write
+      packages: write
 
-    # 작업의 단계별 실행 순서
     steps:
-    # 1단계: 애플리케이션 소스 코드 체크아웃
     - name: 1. Checkout App Repository
       uses: actions/checkout@v4
 
-    # 2단계: GitHub Container Registry(GHCR)에 로그인
     - name: 2. Login to GitHub Container Registry (GHCR)
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }} # GitHub이 자동으로 제공하는 토큰
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    # 3단계: Docker 이미지 빌드 및 GHCR로 푸시
-    - name: 3. Build and Push Docker Image
+    # 3단계: 소문자로 변환된 이미지 태그 생성
+    - name: 3. Generate Lowercase Image Tag
+      id: image-tag # 이 단계의 출력을 참조하기 위한 ID
+      run: |
+        # github.repository_owner를 소문자로 변환하여 전체 이미지 태그를 생성하고,
+        # 다음 단계에서 사용할 수 있도록 GITHUB_OUTPUT에 저장합니다.
+        echo "TAG=ghcr.io/${{ toLower(github.repository_owner) }}/${{ github.event.repository.name }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+    # 4단계: Docker 이미지 빌드 및 GHCR로 푸시
+    - name: 4. Build and Push Docker Image
       uses: docker/build-push-action@v5
       with:
         context: .
         push: true
-        # 태그 형식: ghcr.io/소유자/리포지토리:커밋해시
-        tags:  ghcr.io/${{ github.repository_owner,, }}/${{ github.event.repository.name }}:${{ github.sha }}
+        # 이전 단계(id: image-tag)에서 생성한 태그를 사용합니다.
+        tags: ${{ steps.image-tag.outputs.TAG }}
 
-    # 4단계: 설정을 담은 my-config-repo 체크아웃
-    - name: 4. Checkout Config Repository
+    # 5단계: 설정을 담은 my-config-repo 체크아웃
+    - name: 5. Checkout Config Repository
       uses: actions/checkout@v4
       with:
-        # ⚠️ 중요: 이 부분을 자신의 config-repo 주소로 변경하세요!
-        repository: <내 GitHub ID>/my-config-repo
-        # ⚠️ 중요: 다음 단계에서 생성할 Personal Access Token을 사용합니다.
+        repository: <내 GitHub ID>/my-config-repo # 👈 이 부분은 자신의 config-repo 주소로 유지
         token: ${{ secrets.PAT }}
 
-    # 5단계: 쿠버네티스 매니페스트의 이미지 태그 업데이트
-    - name: 5. Update Kubernetes Manifest
+    # 6단계: 쿠버네티스 매니페스트의 이미지 태그 업데이트
+    - name: 6. Update Kubernetes Manifest
       run: |
-        # deployment.yaml 파일의 이미지 태그를 방금 빌드한 이미지의 태그로 변경합니다.
-        sed -i "s|image:.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|g" deployment.yaml
+        # 이전 단계에서 생성한 동일한 태그를 사용하여 deployment.yaml 파일을 수정합니다.
+        sed -i "s|image:.*|image: ${{ steps.image-tag.outputs.TAG }}|g" deployment.yaml
         
-    # 6단계: 변경된 매니페스트를 config-repo에 커밋 및 푸시
-    - name: 6. Commit and Push to Config Repository
+    # 7단계: 변경된 매니페스트를 config-repo에 커밋 및 푸시
+    - name: 7. Commit and Push to Config Repository
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
