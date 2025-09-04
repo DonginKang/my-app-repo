@@ -37,7 +37,7 @@ jobs:
         context: .
         push: true
         # 태그 형식: ghcr.io/소유자/리포지토리:커밋해시
-        tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+        tags:  ghcr.io/${{ github.repository_owner,, }}/${{ github.event.repository.name }}:${{ github.sha }}
 
     # 4단계: 설정을 담은 my-config-repo 체크아웃
     - name: 4. Checkout Config Repository
