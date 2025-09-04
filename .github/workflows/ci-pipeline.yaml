@@ -52,7 +52,7 @@ jobs:
     - name: 5. Checkout Config Repository
       uses: actions/checkout@v4
       with:
-        repository: <내 GitHub ID>/my-config-repo # 👈 이 부분은 자신의 config-repo 주소로 변경
+        repository: Donginkang/my-config-repo # 👈 이 부분은 자신의 config-repo 주소로 변경
         token: ${{ secrets.PAT }}
 
     # 6단계: 쿠버네티스 매니페스트의 이미지 태그 업데이트
